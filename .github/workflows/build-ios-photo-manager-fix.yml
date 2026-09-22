@@ -42,7 +42,7 @@ jobs:
         run: |
           rm -rf Payload
           mkdir Payload
-          cp -R Runner.app Payload/
+          cp -R Immich.app Payload/
           zip -qry Immich-iOS-photo-manager-3.10.0-unsigned.ipa Payload
 
       - name: Upload IPA
