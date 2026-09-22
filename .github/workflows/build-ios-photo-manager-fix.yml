@@ -1,0 +1,58 @@
+name: Build Immich iOS fix
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: fix/ios-photo-manager-3.10.0
+
+      - name: Patch photo_manager
+        working-directory: mobile
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("pubspec.yaml")
+          s = p.read_text()
+          old = "  photo_manager: 3.9.0"
+          new = "  photo_manager: 3.10.0"
+          if old not in s:
+              raise SystemExit("photo_manager 3.9.0 line not found")
+          p.write_text(s.replace(old, new, 1))
+          PY
+
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.47.1"
+          channel: "stable"
+          cache: true
+
+      - name: Get Flutter packages
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build iOS (no signing)
+        working-directory: mobile
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA
+        working-directory: mobile/build/ios/iphoneos
+        run: |
+          rm -rf Payload
+          mkdir Payload
+          cp -R Runner.app Payload/
+          zip -qry Immich-iOS-photo-manager-3.10.0-unsigned.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: immich-ios-photo-manager-3.10.0-unsigned
+          path: mobile/build/ios/iphoneos/Immich-iOS-photo-manager-3.10.0-unsigned.ipa
+          retention-days: 7
