@@ -20,6 +20,15 @@ jobs:
           channel: "stable"
           cache: true
 
+      - name: Install mise and OpenAPI generator
+        uses: jdx/mise-action@v4
+        with:
+          install_args: "java@21.0.2 npm:@openapitools/openapi-generator-cli@2.40.1"
+          cache: true
+
+      - name: Generate Dart OpenAPI SDK
+        run: mise //:open-api-dart
+
       - name: Get Flutter packages
         working-directory: mobile
         run: flutter pub get
