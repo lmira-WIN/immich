@@ -41,6 +41,9 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
+      - name: Run mobile code generation
+        run: mise //mobile:codegen
+
       - name: Build iOS (no signing)
         working-directory: mobile
         run: flutter build ios --release --no-codesign
