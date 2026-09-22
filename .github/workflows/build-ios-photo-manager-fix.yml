@@ -13,20 +13,6 @@ jobs:
         with:
           ref: fix/ios-photo-manager-3.10.0
 
-      - name: Patch photo_manager
-        working-directory: mobile
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("pubspec.yaml")
-          s = p.read_text()
-          old = "  photo_manager: 3.9.0"
-          new = "  photo_manager: 3.10.0"
-          if old not in s:
-              raise SystemExit("photo_manager 3.9.0 line not found")
-          p.write_text(s.replace(old, new, 1))
-          PY
-
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
