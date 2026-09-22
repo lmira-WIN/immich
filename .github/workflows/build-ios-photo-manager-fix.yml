@@ -1,0 +1,65 @@
+name: Build Immich iOS Photo Manager Fix
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Branch to build"
+        required: true
+        default: "fix/ios-photo-manager-3.10.0"
+        type: string
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer || true
+          xcodebuild -version
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version-file: ./mobile/pubspec.yaml
+          cache: true
+
+      - name: Get Flutter dependencies
+        working-directory: ./mobile
+        run: flutter pub get
+
+      - name: Generate translation files
+        working-directory: ./mobile
+        run: dart run easy_localization:generate -S ../i18n && dart run bin/generate_keys.dart
+
+      - name: Generate platform APIs
+        working-directory: ./mobile
+        run: make pigeon
+
+      - name: Build iOS without signing
+        working-directory: ./mobile
+        run: flutter build ios --release --no-codesign
+
+      - name: Package unsigned IPA
+        working-directory: ./mobile/build/ios/iphoneos
+        run: |
+          rm -rf Payload
+          mkdir Payload
+          cp -R Runner.app Payload/
+          zip -qry Immich-iOS-photo-manager-3.10.0-unsigned.ipa Payload
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: immich-ios-photo-manager-3.10.0-unsigned
+          path: mobile/build/ios/iphoneos/Immich-iOS-photo-manager-3.10.0-unsigned.ipa
+          retention-days: 7
