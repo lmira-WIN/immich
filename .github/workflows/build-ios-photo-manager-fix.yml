@@ -28,7 +28,7 @@ jobs:
           working_directory: ./mobile
 
       - name: Install mobile dependencies
-        run: mise //mobile:install:ci
+        run: mise //mobile:install
 
       - name: Run mobile code generation
         run: mise //mobile:codegen
