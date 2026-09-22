@@ -2,6 +2,9 @@ name: Build Immich iOS fix
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - fix/ios-photo-manager-3.10.0
 
 jobs:
   build-ios:
