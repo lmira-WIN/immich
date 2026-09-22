@@ -15,8 +15,6 @@ on:
 jobs:
   build-ios:
     runs-on: macos-15
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout target branch
@@ -24,32 +22,25 @@ jobs:
         with:
           ref: ${{ inputs.ref || 'fix/ios-photo-manager-3.10.0' }}
 
-      - name: Select Xcode
+      - name: Select Xcode 26.2
         run: |
-          sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer || true
+          sudo xcode-select -s "/Applications/Xcode_26.2.app/Contents/Developer"
           xcodebuild -version
 
-      - name: Setup Flutter SDK
-        uses: subosito/flutter-action@v2
+      - name: Install mise tools
+        uses: jdx/mise-action@v4
         with:
-          channel: stable
-          flutter-version-file: ./mobile/pubspec.yaml
           cache: true
+          working_directory: ./mobile
 
-      - name: Get Flutter dependencies
-        working-directory: ./mobile
-        run: flutter pub get
+      - name: Install mobile dependencies
+        run: mise //mobile:install
 
-      - name: Generate translation files
-        working-directory: ./mobile
-        run: dart run easy_localization:generate -S ../i18n && dart run bin/generate_keys.dart
+      - name: Run mobile code generation
+        run: mise //mobile:codegen
 
-      - name: Generate platform APIs
-        working-directory: ./mobile
-        run: make pigeon
-
-      - name: Build iOS without signing
-        working-directory: ./mobile
+      - name: Build iOS (no signing)
+        working-directory: mobile
         run: flutter build ios --release --no-codesign
 
       - name: Package unsigned IPA
@@ -60,7 +51,7 @@ jobs:
           cp -R Immich.app Payload/
           zip -qry Immich-iOS-photo-manager-3.10.0-unsigned.ipa Payload
 
-      - name: Upload IPA artifact
+      - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: immich-ios-photo-manager-3.10.0-unsigned
