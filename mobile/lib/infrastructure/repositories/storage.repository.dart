@@ -110,9 +110,31 @@ class StorageRepository {
         return null;
       }
 
-      return await entity.loadFile(progressHandler: progressHandler);
+      await _logPhotoKitState(entity, assetId, "before loadFile");
+      final file = await entity.loadFile(progressHandler: progressHandler);
+
+      if (file == null) {
+        log.warning("PhotoKit returned null from loadFile for asset $assetId");
+      } else {
+        final exists = await file.exists();
+        log.info("PhotoKit returned file for asset $assetId: pathExists=$exists path=$file");
+      }
+
+      return file;
     } catch (error, stackTrace) {
       log.warning("Error loading file from cloud for asset $assetId", error, stackTrace);
+      try {
+        final entity = await AssetEntity.fromId(assetId);
+        if (entity != null) {
+          await _logPhotoKitState(entity, assetId, "after loadFile error");
+        }
+      } catch (diagnosticError, diagnosticStack) {
+        log.warning(
+          "PhotoKit diagnostic failed for asset $assetId",
+          diagnosticError,
+          diagnosticStack,
+        );
+      }
       return null;
     }
   }
@@ -125,10 +147,62 @@ class StorageRepository {
         return null;
       }
 
-      return await entity.loadFile(withSubtype: true, progressHandler: progressHandler);
+      await _logPhotoKitState(entity, assetId, "before loadMotionFile");
+      final file = await entity.loadFile(withSubtype: true, progressHandler: progressHandler);
+
+      if (file == null) {
+        log.warning("PhotoKit returned null from loadFile(withSubtype) for asset $assetId");
+      } else {
+        final exists = await file.exists();
+        log.info("PhotoKit returned motion file for asset $assetId: pathExists=$exists path=$file");
+      }
+
+      return file;
     } catch (error, stackTrace) {
       log.warning("Error loading motion file from cloud for asset $assetId", error, stackTrace);
       return null;
+    }
+  }
+
+  Future<void> _logPhotoKitState(AssetEntity entity, String assetId, String stage) async {
+    if (!CurrentPlatform.isIOS) {
+      return;
+    }
+
+    try {
+      final locallyAvailable = await entity.isLocallyAvailable(isOrigin: true);
+      final exists = await entity.exists;
+      final mimeType = await entity.mimeTypeAsync;
+
+      String? cloudIdentifier;
+      bool? hasAdjustments;
+      try {
+        cloudIdentifier = await entity.darwin.cloudIdentifier;
+        hasAdjustments = await entity.darwin.hasAdjustments;
+      } catch (error, stackTrace) {
+        log.fine(
+          "Optional Darwin diagnostics failed for $assetId at $stage",
+          error,
+          stackTrace,
+        );
+      }
+
+      log.info(
+        "PhotoKit state [$stage] id=$assetId "
+        "exists=$exists "
+        "locallyAvailableOrigin=$locallyAvailable "
+        "type=${entity.type} "
+        "subtype=${entity.subtype} "
+        "title=${entity.title} "
+        "mimeType=$mimeType "
+        "width=${entity.width} "
+        "height=${entity.height} "
+        "duration=${entity.duration} "
+        "cloudIdentifier=${cloudIdentifier ?? "(null)"} "
+        "hasAdjustments=${hasAdjustments ?? "unknown"}",
+      );
+    } catch (error, stackTrace) {
+      log.warning("PhotoKit diagnostic state failed for asset $assetId at $stage", error, stackTrace);
     }
   }
 
